@@ -9,7 +9,6 @@ const PORT = process.env.PORT || 3000;
 
 async function bootstrap() {
   await initSheetsCache();
-  await createBot();
 
   const app = express();
 
@@ -28,6 +27,13 @@ async function bootstrap() {
   app.listen(PORT, () => {
     console.log(`✅ HTTP сервер запущен на порту ${PORT}`);
   });
+
+  try {
+    await createBot();
+  } catch (err) {
+    console.error('⚠️ Не удалось запустить Telegram бота:', err);
+    console.log('HTTP сервер продолжает работать');
+  }
 }
 
 bootstrap().catch((err) => {
