@@ -1,4 +1,3 @@
-import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { config } from '../config/index.js';
 
 let cache = {
@@ -10,40 +9,44 @@ let cache = {
 let refreshIntervalHandle = null;
 
 async function loadSheetPhones() {
-  const doc = new GoogleSpreadsheet(config.googleSheetId);
-
-  await doc.useServiceAccountAuth({
-    client_email: config.googleClientEmail,
-    private_key: config.googlePrivateKey
-  });
-
-  await doc.loadInfo();
-  const sheet = doc.sheetsByIndex[0];
-  const rows = await sheet.getRows();
-
-  const phones = new Set();
-
-  for (const row of rows) {
-    const raw = row.Phone || row.phone || row['PHONE'];
-    if (!raw) continue;
-    const value = String(raw).trim();
-    if (!value) continue;
-    phones.add(value);
+  const csvUrl = `https://docs.google.com/spreadsheets/d/${config.googleSheetId}/export?format=csv&gid=0`;
+  
+  const response = await fetch(csvUrl);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
   }
-
+  
+  const csvText = await response.text();
+  const lines = csvText.split('\n');
+  
+  const phones = new Set();
+  
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    const columns = line.split(',');
+    const phoneValue = columns[0]?.trim();
+    if (phoneValue && phoneValue.toLowerCase() !== 'phone') {
+      phones.add(phoneValue);
+    }
+  }
+  
   return phones;
 }
 
 export async function initSheetsCache() {
+  console.log('Инициализация кэша Google Sheets (публичный доступ)...');
+  
   try {
     const phones = await loadSheetPhones();
     cache.phones = phones;
     cache.lastUpdated = new Date();
     cache.lastError = null;
-    console.log(`Initial cache loaded, size=${phones.size}`);
+    console.log(`✅ Кэш Google Sheets загружен, размер=${phones.size}`);
   } catch (err) {
     cache.lastError = err.message || String(err);
-    console.error('Failed to load initial Google Sheets cache:', err);
+    console.error('Ошибка загрузки кэша Google Sheets:', err);
   }
 
   const intervalMs = config.cacheTtlMinutes * 60 * 1000;
@@ -55,11 +58,10 @@ export async function initSheetsCache() {
         cache.phones = phones;
         cache.lastUpdated = new Date();
         cache.lastError = null;
-        console.log(`Cache refreshed, size=${phones.size}`);
+        console.log(`Кэш обновлён, размер=${phones.size}`);
       } catch (err) {
         cache.lastError = err.message || String(err);
-        console.error('Failed to refresh Google Sheets cache:', err);
-        // не падаем, оставляем старый кэш
+        console.error('Ошибка обновления кэша Google Sheets:', err);
       }
     }, intervalMs);
   }
