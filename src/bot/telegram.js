@@ -59,8 +59,13 @@ export async function createBot() {
     ctx.reply('Отправьте, пожалуйста, номер телефона текстом.');
   });
 
-  await bot.launch();
-  console.log('Telegram bot started');
+  try {
+    await bot.launch();
+    console.log('✅ Telegram бот запущен');
+  } catch (err) {
+    console.error('❌ Ошибка запуска Telegram бота:', err);
+    throw err;
+  }
 
   // Корректное завершение при остановке процесса
   process.once('SIGINT', () => bot.stop('SIGINT'));

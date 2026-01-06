@@ -26,7 +26,7 @@ async function bootstrap() {
   });
 
   app.listen(PORT, () => {
-    console.log(`HTTP server listening on port ${PORT}`);
+    console.log(`✅ HTTP сервер запущен на порту ${PORT}`);
   });
 }
 
